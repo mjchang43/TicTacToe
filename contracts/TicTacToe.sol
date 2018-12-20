@@ -35,8 +35,16 @@ contract TicTacToe {
         require(msg.value == gameCost);
         gameActive = true;
         player2 = msg.sender;
-        activePlayer = player2;
+	emit PlayerJoined(player2);
+	
+	if(now % 2 == 0) {
+       	    activePlayer = player2;
+	}else {
+	    activePlayer = player1;
+	}
+
         gameValidUtil = now + timeToReact;
+	emit NextPlayer(activePlayer);
     }
     
     function getBoard() public view returns(address[3][3]) {
@@ -65,9 +73,9 @@ contract TicTacToe {
             }else {
                 activePlayer = player1;
             }
+	    gameValidUtil = now + timeToReact;
+	    emit NextPlayer(activePlayer);
         }
-        
-        gameValidUtil = now + timeToReact;
     }
     
     function setWinner(uint8 x, uint8 y) private {
@@ -123,8 +131,7 @@ contract TicTacToe {
     function setDraw() private {
         gameActive = false;
         isDraw = true;
-        emit GameOverWithDraw(isDraw);
-            
+
         uint balanceToPayOut = address(this).balance;
         if(!player1.send(balanceToPayOut)) {
             balanceToWithdrawPlayer1 = balanceToPayOut;
@@ -137,6 +144,8 @@ contract TicTacToe {
         }else {
             emit PayoutSuccess(player2, balanceToPayOut);
         }
+
+	emit GameOverWithDraw(isDraw);
             
         return;
     }
