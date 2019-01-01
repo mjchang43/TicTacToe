@@ -4,6 +4,7 @@ import '../styles/app.css'
 // Import libraries we need.
 import { default as Web3 } from 'web3'
 import { default as contract } from 'truffle-contract'
+import $ from "jquery"
 
 // Import our contract artifacts and turn them into usable abstractions.
 import tictactoeArtifact from '../../build/contracts/TicTacToe.json'
@@ -16,6 +17,7 @@ const TicTacToe = contract(tictactoeArtifact)
 // For application bootstrapping, check out window.addEventListener below.
 let accounts
 let account
+let ticTacToeInstance
 
 const App = {
   start: function () {
@@ -38,15 +40,69 @@ const App = {
 
       accounts = accs
       account = accounts[0]
-
     })
+  },
+  
+  useAccountOne: function() {
+      account = accounts[1]
   },
 
   createNewGame: function() {
-    console.log("Create Game called");
+    TicTacToe.new({from: account, value: web3.toWei(0.1,"ether"), gas: 3000000}).then(instance => {
+    	ticTacToeInstance = instance
+      var playerJoinedEvent = ticTacToeInstance.PlayerJoined()
+      
+      playerJoinedEvent.watch(function(error, eventObj){
+        if(!error) {
+            console.log(eventObj)
+            for(var i = 0; i <  3; i++) {
+              for(var j = 0; j < 3; j++) {
+                $($("#board")[0].children[0].children[i].children[j]).off('click').click({x:i, y:j}, App.setStone)
+              }
+            }
+        } else {
+          console.error(error)
+        }
+	    })
+	    console.log(ticTacToeInstance)
+    }).catch(error => {
+      console.error(error);
+    })
   },
   joinGame: function() {
-    console.log("joinGame called");
+    var gameAddress = prompt("Address of the Game")
+    if(gameAddress != null) {
+    	TicTacToe.at(gameAddress).then(instance => {
+        ticTacToeInstance = instance
+	      return ticTacToeInstance.joinGame({from: account, value: web3.toWei(0.1,"ether"), gas: 3000000})
+	    }).then(txResult => {
+	      for(var i = 0; i <  3; i++) {
+          for(var j = 0; j < 3; j++) {
+            $($("#board")[0].children[0].children[i].children[j]).off('click').click({x:i, y:j}, App.setStone)
+          }
+        }
+	    console.log(txResult)
+	    })
+    }
+  },
+  setStone: function(event) {
+    ticTacToeInstance.setStone(event.data.x, event.data.y, {from: account}).then(txResult => {
+      console.log(txResult)
+    })
+    console.log(event)
+  },
+  printBoard: function() {
+    ticTacToeInstance.getBoard().call().then(board => {
+      for(var i = 0; i < board.length; i++) {
+	      for(var j = 0; j < board[i].length; j++) {
+	        if(board[i][j] == account) {
+		        $("#board")[0].children[0].children[i].children[j].innerHTML = "X"
+		      } else if (board[i][j] != 0) {
+		        $("#board")[0].children[0].children[i].children[j].innerHTML = "O"
+		      }
+	      }
+	    }
+    })
   }
 }
 
